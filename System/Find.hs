@@ -1,5 +1,5 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-module System.Find (find,contains,noFilter,anything) where 
+module System.Find (find,contains,noFilter,anything,hasExt,isNotSymbolicLink) where 
 import Data.List (isInfixOf)
 import System.Directory
 import System.FilePath
@@ -56,3 +56,7 @@ noFilter = True
 
 anything :: (FilePath -> IO Bool)
 anything = \x->return True
+
+hasExt e fp = return (ext == e)
+    where 
+      ext = reverse . takeWhile (/= '.') . reverse $ fp
