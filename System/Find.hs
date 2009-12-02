@@ -1,10 +1,11 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-module System.Find (find,contains,noFilter,anything,hasExt,isNotSymbolicLink) where 
+module System.Find (find,nonRecursiveFind,contains,noFilter,anything,hasExt,isNotSymbolicLink) where 
 import Data.List (isInfixOf)
 import System.Directory
 import System.FilePath
 import System.Posix.Files
 import System.IO.Unsafe
+import Control.Monad
 
 andM (x:xs)    = x >>= \y-> if y then andM xs else return False
 andM []        = return True
@@ -30,6 +31,12 @@ find path filters = do
               mapM (\x->find x filters) list >>= return . concat 
             else
               return []
+
+
+nonRecursiveFind path filters = do
+  getDirectoryContents path >>= filterM dofilter . repath path . noDots
+  where noDots = filter (\x->x /= "." && x /= "..") 
+        dofilter b = mapM (\f -> f b) filters >>= return . and
 
 contains test path = do 
   doesFileExist path >>= \x->
