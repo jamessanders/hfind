@@ -9,6 +9,6 @@ Build-Type:          Simple
 Cabal-Version:       >=1.2
 
 Library
-     Build-Depends:     base >= 3 && < 5
+     Build-Depends:     base >= 3 && < 5, unix >= 2.3.2.0, filepath >= 1.1.0.2, directory >= 1.0.0.3
      Exposed-modules:   System.Find
-     ghc-options:       -Wall
+
