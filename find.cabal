@@ -1,0 +1,14 @@
+Name:                Find
+Version:             0.0.1
+Description:         Find files in your file system
+License:             BSD3
+License-file:        LICENSE
+Author:              James Sanders
+Maintainer:          jimmyjazz14@gmail.com
+Build-Type:          Simple
+Cabal-Version:       >=1.2
+
+Library
+     Build-Depends:     base >= 3 && < 5
+     Exposed-modules:   System.Find
+     ghc-options:       -Wall
