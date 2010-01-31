@@ -45,22 +45,35 @@ noDots = filter (\x->x /= "." && x /= "..")
 
 ------------------------------------------------------------------------
 
-find path ff = do
-    a    <- ff path
-    rest <- unsafeInterleaveIO getRest
-    if a 
-      then return (path : rest)
-      else return rest
-    where 
-      getRest = (fmap and $ sequence [catch (doesDirectoryExist path) (\_->return False),
-                                      catch (isNotSymbolicLink  path) (\_->return False)]) >>= \e -> 
-               if e == True 
-                 then do
-                   list <- (catch (getDirectoryContents path) (\_->return [])) >>= return . repath path . noDots
-                   mapM (flip find ff) list >>= return . concat 
-                 else return []
+expandDir p = getDirectoryContents p >>= return . repath p . noDots 
+
+find' :: FilePath -> (FilePath -> IO Bool) -> (FilePath -> IO a) -> IO [a]
+find' path ff iodo = do
+  cur   <- catch (expandDir path) (\_->return [])
+  files <- filterM doesFileExist cur >>= filterM ff >>= mapM iodo
+  dirs  <- filterM doesDirectoryExist cur
+  dirs' <- filterM ff dirs >>= mapM iodo
+  expanded <- fmap concat . mapM (\x->find' x ff iodo) $ dirs
+  return (dirs' ++ files ++ expanded)
+
+
+find'' :: [FilePath] -> [a] -> (FilePath -> IO Bool) -> (FilePath -> IO a) -> IO [a]
+find'' [] out _ _ = return out
+find'' (x:xs) out ff iodo = do
+  nout  <- ff x >>= \ch -> 
+           if ch 
+            then iodo x >>= return . (flip (:) out) 
+            else return out
+  isDir <- doesDirectoryExist x
+  if isDir 
+     then (catch (expandDir x) (\_->return [])) >>= \y -> find'' (y ++ xs) nout ff iodo
+     else find'' (xs) nout ff iodo
+
+withFind path ff iodo = find'' [path] [] ff iodo
+
+find path ff = find'' [path] [] ff return
 
 nonRecursiveFind path ff = do
-  getDirectoryContents path >>= filterM ff . repath path . noDots
+  expandDir path >>= filterM ff 
 
 
