@@ -1,52 +1,66 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-module System.Find (find,nonRecursiveFind,contains,noFilter,anything,hasExt,isNotSymbolicLink) where 
+module System.Find (find,nonRecursiveFind,grep,anything,hasExt,isNotSymbolicLink) where 
 import Data.List (isInfixOf)
 import System.Directory
 import System.FilePath
 import System.Posix.Files
 import System.IO.Unsafe
 import Control.Monad
+import qualified Data.ByteString.Char8 as BS
 
-andM (x:xs)    = x >>= \y-> if y then andM xs else return False
-andM []        = return True
+f' f x y z = do
+  a <- x z
+  b <- y z
+  return (a `f` b)
 
-filterFile filters file = (andM $ map (\f->f file) filters) 
+fAnd,fOr :: (a -> IO Bool) -> (a -> IO Bool) -> a -> IO Bool
+fOr  = f' (||)
+fAnd = f' (&&)
 
 gluePaths a b = if last a == '/' then a++b else a++"/"++b
 repath path list = map (gluePaths path) list 
 
 isNotSymbolicLink path = getFileStatus path >>= return . not . isSymbolicLink
 
-find path filters = do
-    rest <- unsafeInterleaveIO $ getRest
-    a <- filterFile filters path
-    case a of
-          True -> return $ path : rest
-          False-> return rest
-    where noDots = filter (\x->x /= "." && x /= "..") 
-          getRest = andM [doesDirectoryExist path,isNotSymbolicLink path] >>= \e -> 
-           if e == True 
-            then do
-              list <- getDirectoryContents path >>= return . repath path . noDots
-              mapM (\x->find x filters) list >>= return . concat 
-            else
-              return []
+anything :: (FilePath -> IO Bool)
+anything _ = return True
 
+hasExt e fp = return (ext == e)
+    where 
+      ext = reverse . takeWhile (/= '.') . reverse $ fp
 
-nonRecursiveFind path filters = do
-  getDirectoryContents path >>= filterM dofilter . repath path . noDots
-  where noDots = filter (\x->x /= "." && x /= "..") 
-        dofilter b = mapM (\f -> f b) filters >>= return . and
-
-contains test path = do 
+grep test path = let test' = BS.pack test in do 
   doesFileExist path >>= \x->
-   case x of
-     True -> readFile path >>= return . isInfixOf test
-     False -> return False
+    if x 
+      then BS.readFile path >>= return . BS.isInfixOf test'
+      else return False
 
-withFind path filters action = do
+noDots = filter (\x->x /= "." && x /= "..") 
+
+------------------------------------------------------------------------
+
+find path ff = do
+    a    <- ff path
+    rest <- unsafeInterleaveIO getRest
+    if a 
+      then return (path : rest)
+      else return rest
+    where 
+      getRest = (fmap and $ sequence [catch (doesDirectoryExist path) (\_->return False),
+                                      catch (isNotSymbolicLink path)  (\_->return False)]) >>= \e -> 
+               if e == True 
+                 then do
+                   list <- (catch (getDirectoryContents path) (\_->return [])) >>= return . repath path . noDots
+                   mapM (flip find ff) list >>= return . concat 
+                 else return []
+
+nonRecursiveFind path ff = do
+  getDirectoryContents path >>= filterM ff . repath path . noDots
+
+
+withFind path ff action = do
     rest <- getRest
-    filterFile filters path >>= \y ->
+    ff path >>= \y ->
         case y of
           True -> action path
           False-> return ()
@@ -55,15 +69,7 @@ withFind path filters action = do
                     if e == True 
                      then do
                        list <- getDirectoryContents path >>= return . repath path . noDots
-                       mapM (\x->withFind x filters action) list
+                       mapM (\x->withFind x ff action) list
                      else
                        return [()]
 
-noFilter = True
-
-anything :: (FilePath -> IO Bool)
-anything = \x->return True
-
-hasExt e fp = return (ext == e)
-    where 
-      ext = reverse . takeWhile (/= '.') . reverse $ fp
