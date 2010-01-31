@@ -1,6 +1,12 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-module System.Find (find,nonRecursiveFind,grep,anything,hasExt,isNotSymbolicLink) where 
-import Data.List (isInfixOf)
+module System.Find (find
+                   ,nonRecursiveFind
+                   ,grep
+                   ,anything
+                   ,hasExt
+                   ,isNotSymbolicLink
+                   ,fOr,fAnd) where 
+
 import System.Directory
 import System.FilePath
 import System.Posix.Files
@@ -47,7 +53,7 @@ find path ff = do
       else return rest
     where 
       getRest = (fmap and $ sequence [catch (doesDirectoryExist path) (\_->return False),
-                                      catch (isNotSymbolicLink path)  (\_->return False)]) >>= \e -> 
+                                      catch (isNotSymbolicLink  path) (\_->return False)]) >>= \e -> 
                if e == True 
                  then do
                    list <- (catch (getDirectoryContents path) (\_->return [])) >>= return . repath path . noDots
@@ -57,19 +63,4 @@ find path ff = do
 nonRecursiveFind path ff = do
   getDirectoryContents path >>= filterM ff . repath path . noDots
 
-
-withFind path ff action = do
-    rest <- getRest
-    ff path >>= \y ->
-        case y of
-          True -> action path
-          False-> return ()
-    where noDots = filter (\x->x /= "." && x /= "..") 
-          getRest = doesDirectoryExist path >>= \e -> 
-                    if e == True 
-                     then do
-                       list <- getDirectoryContents path >>= return . repath path . noDots
-                       mapM (\x->withFind x ff action) list
-                     else
-                       return [()]
 
