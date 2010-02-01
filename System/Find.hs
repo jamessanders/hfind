@@ -25,7 +25,7 @@ fAnd,fOr :: (a -> IO Bool) -> (a -> IO Bool) -> a -> IO Bool
 fOr  = f' (||)
 fAnd = f' (&&)
 
-gluePaths a b = if last a == '/' then a++b else a++"/"++b
+gluePaths a b = a </> b
 repath path list = map (gluePaths path) list 
 
 isNotSymbolicLink path = getFileStatus path >>= return . not . isSymbolicLink
