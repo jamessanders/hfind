@@ -17,3 +17,4 @@ Library
 
      Exposed-modules:   System.Find
 
+     ghc-options:       -O2

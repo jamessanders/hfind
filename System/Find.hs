@@ -4,7 +4,6 @@ module System.Find (find
                    ,grep
                    ,anything
                    ,hasExt
-                   ,isNotSymbolicLink
                    ,withFind
                    ,fOr,fAnd) where 
 
