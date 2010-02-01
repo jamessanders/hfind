@@ -5,9 +5,12 @@ module System.Find (find
                    ,anything
                    ,hasExt
                    ,isNotSymbolicLink
+                   ,withFind
                    ,fOr,fAnd) where 
 
 import System.Directory
+import System.Posix.Directory
+import System.Posix.Files
 import System.FilePath
 import System.Posix.Files
 import System.IO.Unsafe
@@ -69,11 +72,44 @@ find'' (x:xs) out ff iodo = do
      then (catch (expandDir x) (\_->return [])) >>= \y -> find'' (y ++ xs) nout ff iodo
      else find'' (xs) nout ff iodo
 
+
 withFind path ff iodo = find'' [path] [] ff iodo
 
 find path ff = find'' [path] [] ff return
+nonRecursiveFind path ff = expandDir path >>= filterM ff 
 
-nonRecursiveFind path ff = do
-  expandDir path >>= filterM ff 
+
+-- experiment
+-- find''' :: [FilePath] -> (FilePath -> IO Bool) -> (FilePath -> IO ()) -> IO ()
+-- find''' [] _ _ = return ()
+-- find''' (x:xs) ff iodo = do
+--   iodo x
+--   isDir <- doesDirectoryExist x
+--   if isDir 
+--      then (catch (expandDir' x) (\_->return [])) >>= \y -> find''' y ff iodo >> find''' xs ff iodo
+--      else find''' (xs) ff iodo
+--   where expandDir' p = getDirectoryContents p >>= return . map (repath' p) . noDots 
+--         repath' a b = a </> b
+
+-- pfind path = do
+--   stream <- openDirStream path
+--   stream `seq` withStream path stream putStrLn
+
+-- withStream path stream doit = do
+--   r <- readDirStream stream
+--   if isDot' r
+--      then
+--          if not . null $! r 
+--            then let rp = repath' path r in do isDir <- isDir' rp
+--                                               (if isDir then doit rp >> pfind rp else doit rp) 
+--                                               withStream path stream doit
+--            else closeDirStream stream >> return ()
+--      else withStream path stream doit
+
+-- repath' a b = a </> b
+-- isDot' x = (x /= "." && x /= "..") 
+-- isDir' p = catch (fmap isDirectory . getFileStatus $ p) (\_->return False)
+
+-- withFind' path ff iodo = find''' [path] ff iodo
 
 
