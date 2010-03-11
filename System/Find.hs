@@ -25,8 +25,9 @@ fAnd,fOr :: (a -> IO Bool) -> (a -> IO Bool) -> a -> IO Bool
 fOr  = f' (||)
 fAnd = f' (&&)
 
+--gluePaths a = showString a . showString "/"
 gluePaths a b = a </> b
-repath path list = map (gluePaths path) list 
+repath path = map (gluePaths path) 
 
 isNotSymbolicLink path = getFileStatus path >>= return . not . isSymbolicLink
 
